@@ -4,7 +4,7 @@ use Mailgun\Mailgun;
 
 $plugin_info = array (
 	'pi_name' => 'Mailgun Mailer',
-	'pi_version' => '0.1',
+	'pi_version' => '0.2',
 	'pi_author' => 'TJ Draper, Andy Hebrank',
 	'pi_author_url' => 'https://insidenewcity.com',
 	'pi_description' => 'Send emails via mailgun (based on MandrillMailer by TJ Draper',
@@ -32,15 +32,6 @@ class Mailgun_mailer {
 		$this->message = ! empty($message[0]) ? $message : false;
 		$privateMessage = ee()->TMPL->fetch_param('private_message');
 		$this->privateMessage = ($privateMessage == 'yes')? true : false;
-
-		// Get form attr attributes
-		$this->formAttr = array();
-
-		foreach (ee()->TMPL->tagparams as $key => $val) {
-			if (strncmp($key, 'attr:', 5) === 0) {
-				$this->formAttr[substr($key, 5)] = $val;
-			}
-		}
 
 		// If there was an error posting, fill in the form values from the post
 		$this->variables = array();
@@ -232,27 +223,16 @@ class Mailgun_mailer {
 			}
 		}
 
-		// Check that only allowed fields are part of the submission
-
+		// strip out disallowed inputs
 		$this->post = array();
-
 		foreach ($_POST as $postKey => $postValue) {
 			if ($postKey !== 'submission') {
 				$key = ee()->security->xss_clean($postKey);
-				$value = ee()->security->xss_clean($postValue);
-				$this->post[$key] = $value;
+				if (in_array($key, $this->allowed)) {
+					$value = ee()->security->xss_clean($postValue);
+					$this->post[$key] = $value;
+				}
 			}
-		}
-
-		foreach ($this->post as $postKey => $postValue) {
-			if (! in_array($postKey, $this->allowed)) {
-				$notAllowed[] = true;
-			}
-		}
-
-		if (! empty($notAllowed)) {
-			show_error('Your submission contains disallowed inputs');
-			exit();
 		}
 
 		// If there are errors, set the form and return
@@ -266,33 +246,27 @@ class Mailgun_mailer {
 	}
 
 	private function _setForm($parse = true) {
-		$form = '<form action="" method="post"';
+
+		$protocol = (isset($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] == "on") ? "https://" : "http://";
+		$url = $protocol . $_SERVER['HTTP_HOST'] . '/' . ee()->uri->uri_string();
+
+		$form_opts = array(
+				'action'          => $url,
+		    'name'            => 'mailgun_mailer',
+		    'secure'          => TRUE
+		);
 
 		if ($this->formClass) {
-			$form .= ' class="' . $this->formClass . '"';
+			$form_opts['class'] = $this->formClass;
 		}
 
 		if ($this->formId) {
-			$form .= ' id="' . $this->formId . '"';
+			$form_opts['id'] = $this->formId;
 		}
 
-		if ($this->formAttr) {
-			foreach ($this->formAttr as $key => $val) {
-				$form .= ' ' . $key . '="' . $val . '"';
-			}
-		}
-
-		$form .= '>';
-
-		// Check for CSRF
-		if (ee()->config->item('disable_csrf_protection') !== 'y') {
-			$form .= '<input type="hidden" name="';
-			$form .= ee()->security->get_csrf_token_name() . '" ';
-			$form .= 'value="' . ee()->security->get_csrf_hash() . '">';
-		}
-
-		$form .= $this->tagContents;
-		$form .= '</form>';
+		$form = ee()->functions->form_declaration($form_opts)
+			. $this->tagContents
+			. '</form>';
 
 		return ee()->TMPL->parse_variables($form, $this->variables);
 	}

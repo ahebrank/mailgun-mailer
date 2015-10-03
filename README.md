@@ -31,8 +31,7 @@ Quick example (borrowed from [MandrillMailer](https://buzzingpixel.com/ee-add-on
   return="/my/uri"
   json="yes"
   class="my-class"
-  id="my-id"
-  attr:my-attribute="my-data"}
+  id="my-id"}
 
   {!-- your form here--don't include the <form> tag, e.g.: --}
     <input type="text" name="phone">

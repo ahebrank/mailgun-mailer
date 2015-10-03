@@ -32,6 +32,7 @@ class Mailgun_mailer {
 		$this->message = ! empty($message[0]) ? $message : false;
 		$privateMessage = ee()->TMPL->fetch_param('private_message');
 		$this->privateMessage = ($privateMessage == 'yes')? true : false;
+		$this->anchor = ee()->TMPL->fetch_param('anchor');
 
 		// If there was an error posting, fill in the form values from the post
 		$this->variables = array();
@@ -249,6 +250,9 @@ class Mailgun_mailer {
 
 		$protocol = (isset($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] == "on") ? "https://" : "http://";
 		$url = $protocol . $_SERVER['HTTP_HOST'] . '/' . ee()->uri->uri_string();
+		if ($this->anchor) {
+			$url .= '#' . $this->anchor;
+		}
 
 		$form_opts = array(
 				'action'          => $url,

@@ -4,10 +4,10 @@ use Mailgun\Mailgun;
 
 $plugin_info = array (
 	'pi_name' => 'Mailgun Mailer',
-	'pi_version' => '0.2',
+	'pi_version' => '0.3',
 	'pi_author' => 'TJ Draper, Andy Hebrank',
 	'pi_author_url' => 'https://insidenewcity.com',
-	'pi_description' => 'Send emails via mailgun (based on MandrillMailer by TJ Draper',
+	'pi_description' => 'Send emails via mailgun (based on MandrillMailer by TJ Draper)',
 	'pi_usage' => Mailgun_mailer::usage()
 );
 
@@ -33,6 +33,7 @@ class Mailgun_mailer {
 		$privateMessage = ee()->TMPL->fetch_param('private_message');
 		$this->privateMessage = ($privateMessage == 'yes')? true : false;
 		$this->anchor = ee()->TMPL->fetch_param('anchor');
+		$this->outputTemplate = ee()->TMPL->fetch_param('output_template', false);
 
 		// If there was an error posting, fill in the form values from the post
 		$this->variables = array();
@@ -134,20 +135,28 @@ class Mailgun_mailer {
 		$htmlContent = '';
 		$textContent = '';
 
-		foreach ($this->post as $key => $value) {
-			if (in_array($key, $this->message)) {
-				$key = str_replace('-', ' ', $key);
-				$key = ucwords($key);
+		if ($this->outputTemplate) {
+			// use a template to make the email
+			$htmlContent = $this->_processTemplate($this->post, $this->outputTemplate);
+			$textContent = $this->_stripTags($htmlContent);
+		}
+		else {
+			// email is key: value for every key
+			foreach ($this->post as $key => $value) {
+				if (in_array($key, $this->message)) {
+					$key = str_replace('-', ' ', $key);
+					$key = ucwords($key);
 
-				$value = $value . '
+					$value = $value . '
 
-';
+	';
 
-				$htmlContent .= '<strong>' . $key . '</strong>: ';
-				$htmlContent .= nl2br(htmlentities($value, ENT_QUOTES));
+					$htmlContent .= '<strong>' . $key . '</strong>: ';
+					$htmlContent .= nl2br(htmlentities($value, ENT_QUOTES));
 
-				$textContent .= $key . ': ';
-				$textContent .= addslashes($value);
+					$textContent .= $key . ': ';
+					$textContent .= addslashes($value);
+				}
 			}
 		}
 
@@ -273,6 +282,21 @@ class Mailgun_mailer {
 			. '</form>';
 
 		return ee()->TMPL->parse_variables($form, $this->variables);
+	}
+
+	private function _processTemplate($form, $template) {
+		list($template_group, $template_file) = explode('/', $template);
+
+		$tmpl = ee()->TMPL->fetch_template($template_group, $template_file, false);
+		$parsed = ee()->TMPL->parse_variables($tmpl, array($form));
+
+		return $parsed;
+	}
+
+	private function _stripTags($html) {
+		// simple html -> newline converter
+		$nl_tags = array('</p>','<br />','<br>','<hr />','<hr>','</h1>','</h2>','</h3>','</h4>','</h5>','</h6>');
+		return strip_tags(str_replace($nl_tags, "\n", $html));
 	}
 
 	function usage() {

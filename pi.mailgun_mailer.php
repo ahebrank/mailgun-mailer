@@ -284,11 +284,23 @@ class Mailgun_mailer {
 		return ee()->TMPL->parse_variables($form, $this->variables);
 	}
 
-	private function _processTemplate($form, $template) {
-		list($template_group, $template_file) = explode('/', $template);
+	private function _in_message($key) {
+		return in_array($key, $this->message);
+	}
 
+	private function _processTemplate($form, $template) {
+		// get the template
+		list($template_group, $template_file) = explode('/', $template);
 		$tmpl = ee()->TMPL->fetch_template($template_group, $template_file, false);
+
+		// filter the $form variables to make sure they're supposed to be in the message
+		$allowed_keys = array_filter(array_keys($form), array($this, '_in_message'));
+		$form = array_intersect_key($form, array_flip($allowed_keys));
+
 		$parsed = ee()->TMPL->parse_variables($tmpl, array($form));
+
+		// remove unmatched template tags
+		$parsed = preg_replace('/{[\w-_]*}/', '', $parsed);
 
 		return $parsed;
 	}

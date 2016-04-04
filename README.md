@@ -54,11 +54,11 @@ By default, the mailer will produce a simple list of fields listed by form name.
 
 where `first_name`, `last_name`, and `mi` are input `name` attributes in the submitted form.
 
-### Recaptcha
+### Captcha: `recaptcha`
 
 [Google's reCAPTCHA service](https://www.google.com/recaptcha/intro/index.html) is supported.  Set parameter `recaptcha="yes"` to enable the submission check and drop tag `{recaptcha}` somewhere inside your form to enable the widget.
 
-### Honeypot field
+### Honeypot field: `honeypot`
 
 An alterate or complementary spam detection technique is to provide a fake "honeypot" field that to human users should be hidden and left blank.  Bots may be detected because they may fill this field with arbitrary text.  Using `honeypot="test_email"` and then adding field `<input id="test_email" name="test_email">` within your form will check to make sure this input submission remains blank.  To make sure normal users don't fill in this field, make sure to hide it with styling:
 

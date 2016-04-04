@@ -56,7 +56,15 @@ where `first_name`, `last_name`, and `mi` are input `name` attributes in the sub
 
 ### Captcha: `recaptcha`
 
-[Google's reCAPTCHA service](https://www.google.com/recaptcha/intro/index.html) is supported.  Set parameter `recaptcha="yes"` to enable the submission check and drop tag `{recaptcha}` somewhere inside your form to enable the widget.
+[Google's reCAPTCHA service](https://www.google.com/recaptcha/intro/index.html) is supported.  You will need to [register your mailer](https://www.google.com/recaptcha/admin) and add your Secret Key and Site Key to to `config.php`:
+
+```php
+$config['mailgun_recaptcha_secret'] = 'xxxxxxxxxxxxxxxxxxxxxxxxxxx';
+$config['mailgun_recaptcha_site_key'] = 'xxxxxxxxxxxxxxxxxxxxxxxxxxx';
+```
+
+Then set parameter `recaptcha="yes"` on the `{exp:mailgun_mailer:form}` tag to enable the submission check and drop tag `{recaptcha}` somewhere inside your form to enable the widget.
+
 
 ### Honeypot field: `honeypot`
 

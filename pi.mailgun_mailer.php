@@ -4,7 +4,7 @@ use Mailgun\Mailgun;
 
 $plugin_info = array (
 	'pi_name' => 'Mailgun Mailer',
-	'pi_version' => '0.3',
+	'pi_version' => '0.4',
 	'pi_author' => 'TJ Draper, Andy Hebrank',
 	'pi_author_url' => 'https://insidenewcity.com',
 	'pi_description' => 'Send emails via mailgun (based on MandrillMailer by TJ Draper)',
@@ -20,7 +20,7 @@ class Mailgun_mailer {
 		$this->formId = ee()->TMPL->fetch_param('id');
 		$this->return = ee()->TMPL->fetch_param('return');
 		$jsonReturn = ee()->TMPL->fetch_param('json');
-		$this->jsonReturn = $jsonReturn == 'yes' ? true : false;
+		$this->jsonReturn = ($jsonReturn == 'yes');
 		$this->required = explode('|', ee()->TMPL->fetch_param('required'));
 		$this->allowed = explode('|', ee()->TMPL->fetch_param('allowed'));
 		$to = explode('|', ee()->TMPL->fetch_param('to'));
@@ -31,9 +31,12 @@ class Mailgun_mailer {
 		$message = explode('|', ee()->TMPL->fetch_param('message'));
 		$this->message = ! empty($message[0]) ? $message : false;
 		$privateMessage = ee()->TMPL->fetch_param('private_message');
-		$this->privateMessage = ($privateMessage == 'yes')? true : false;
+		$this->privateMessage = ($privateMessage == 'yes');
 		$this->anchor = ee()->TMPL->fetch_param('anchor');
 		$this->outputTemplate = ee()->TMPL->fetch_param('output_template', false);
+		$recaptcha = ee()->TMPL->fetch_param('recaptcha', false);
+		$this->recaptcha = ($recaptcha == 'yes');
+		$this->honeypot = ee()->TMPL->fetch_param('honeypot', false);
 
 		// If there was an error posting, fill in the form values from the post
 		$this->variables = array();
@@ -82,7 +85,7 @@ class Mailgun_mailer {
 		}
 
 		$domain = ee()->config->item('mailgun_domain');
-		$mailer = new Mailgun(ee()->config->item('mailgun_key'));
+		$mailer = new Mailgun();
 
 		// Set up message and set the reply to as the sender
 		$message = array(
@@ -245,6 +248,22 @@ class Mailgun_mailer {
 			}
 		}
 
+		// captcha?
+		if ($this->recaptcha) {
+			if (!isset($_POST['g-recaptcha-response']) || !$this->_checkCaptcha($_POST['g-recaptcha-response'])) {
+				$errors = true;
+				$this->variables[0]['error:recaptcha'] = true;
+			}
+		}
+
+		// honeypot?
+		if ($this->honeypot !== false) {
+			if (isset($_POST[$this->honeypot]) && !empty($_POST[$this->honeypot])) {
+				$errors = true;
+				$this->variables[0]['error:honeypot'] = true;
+			}
+		}
+
 		// If there are errors, set the form and return
 		if ($errors) {
 			$this->variables[0]['error'] = true;
@@ -281,6 +300,19 @@ class Mailgun_mailer {
 			. $this->tagContents
 			. '</form>';
 
+		// check for a recaptcha request
+		if (strpos($this->tagContents, '{recaptcha}') !== FALSE) {
+			if ($this->recaptcha) {
+				$this->variables[0]['recaptcha'] = '<div class="g-recaptcha" data-sitekey="' 
+					. ee()->config->item('mailgun_recaptcha_site_key') . '"></div>';
+				$form .= '<script src="https://www.google.com/recaptcha/api.js" async defer></script>';
+			}
+			else {
+				// hide the tag
+				$this->variables[0]['recaptcha'] = (ee()->config->item('template_debugging') == 'y')? '<em>Recaptcha is disabled on this form.</em>' : '';
+			}
+		}
+
 		return ee()->TMPL->parse_variables($form, $this->variables);
 	}
 
@@ -303,6 +335,35 @@ class Mailgun_mailer {
 		$parsed = preg_replace('/{[\w-_]*}/', '', $parsed);
 
 		return $parsed;
+	}
+
+	/**
+	 * check recaptcha 
+	 */
+	private function _checkCaptcha($formval) {
+		$url = 'https://www.google.com/recaptcha/api/siteverify';
+		$data = array(
+			'secret' => ee()->config->item('mailgun_recaptcha_secret'),
+			'response' => $formval
+		);
+		$ch = curl_init();
+		$opts = array(
+			CURLOPT_URL => $url, 
+			CURLOPT_POST => TRUE,
+			CURLOPT_POSTFIELDS => $data,
+			CURLOPT_RETURNTRANSFER => TRUE,
+		);
+		curl_setopt_array($ch, $opts);
+		try {
+			$result = curl_exec($ch);
+			$resp = json_decode($result);
+			curl_close($ch);
+			return ($resp->success);
+		}
+		catch (Exception $e) {
+			curl_close($ch);
+		}
+		return FALSE;
 	}
 
 	private function _stripTags($html) {

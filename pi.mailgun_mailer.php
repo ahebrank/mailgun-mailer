@@ -85,7 +85,7 @@ class Mailgun_mailer {
 		}
 
 		$domain = ee()->config->item('mailgun_domain');
-		$mailer = new Mailgun();
+		$mailer = new Mailgun(ee()->config->item('mailgun_key', null));
 
 		// Set up message and set the reply to as the sender
 		$message = array(

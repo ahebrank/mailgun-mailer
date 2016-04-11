@@ -93,17 +93,29 @@ class Mailgun_mailer {
 		);
 
 		// Set the reply-to to the from email
-		if (! empty($this->from)) {
+		// this is set from the first of the following that isn't blank:
+		//   1. the "from" parameter on the form tag
+		//   2. the "from-email" input
+		//   3. the webmaster_email config item
+		if (!empty($this->from)) {
 			$message['h:reply-to'] = $this->from;
-		} else {
+		} 
+		elseif (!empty($this->post['from-email'])) {
 			$message['h:reply-to'] = $this->post['from-email'];
 		}
+		else {
+			$message['h:reply-to'] = ee()->config->item('webmaster_email');
+		}
 
-		// Set the from email to the webmaster email for best deliverability
-		$message['from'] = ee()->config->item('webmaster_email');
+		// Set the MIME from email to match mailgun's SMTP sender for best deliverability
+		$sender = ee()->config->item('mailgun_sender');
+		if ($sender === FALSE) {
+			$sender = ee()->config->item('webmaster_email');
+		}
+		$message['from'] = $sender;
 
 		// Set the "from" name if it exists
-		if (! empty($this->fromName)) {
+		if (!empty($this->fromName)) {
 			$message['from'] = $this->fromName . " <" . $message['from'] . ">";
 		} else if (ee()->input->post('from-name')) {
 			$message['from'] = $this->post['from-name'] . " <" . $message['from'] . ">";

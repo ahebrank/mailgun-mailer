@@ -11,9 +11,10 @@ Add the following to `system/expressionengine/config/config.php`:
 ```
 $config['mailgun_key'] = 'key-XXXXXXXXXXXXXXXXX';
 $config['mailgun_domain'] = 'sandboxXXXXXXXXXX.mailgun.org';
+$config['mailgun_sender'] = 'postmaster@example.com'
 ```
 
-These parameters are available on the [domain configuration page](https://mailgun.com/app/domains). To send from a real domain, you'll need to verify ownership in Mailgun.
+These parameters are available on the [domain configuration page](https://mailgun.com/app/domains). To send from a real domain, you'll need to verify ownership in Mailgun. The `mailgun_sender` config parameter is optional but lets you match the `From` MIME header to the envelope sender (listed as the "Default SMTP Login" on the Mailgun domain information page). This helps deliverability with strict endpoints.
 
 ## Tag parameters
 

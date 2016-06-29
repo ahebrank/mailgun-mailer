@@ -54,10 +54,6 @@ class Mailgun_mailer {
 		// Detect whether this is a submission or not
 		if ($_POST) {
 			$returnData = $this->_postForm();
-			if ($returnData === FALSE) {
-				$returnData = '<div class="error">Error in form submission</div>' 
-					. $this->_setForm();
-			}
 		} else {
 			$returnData = $this->_setForm();
 		}
@@ -70,7 +66,7 @@ class Mailgun_mailer {
 		$errors = $this->_checkForm();
 
 		// Return errors if there are any
-		if ($errors) {
+		if ($errors !== false) {
 			if ($this->jsonReturn === true) {
 				$output = array(
 					'success' => 0
@@ -83,8 +79,9 @@ class Mailgun_mailer {
 				}
 
 				ee()->output->send_ajax_response($output);
-			} else {
-				return FALSE;
+			} 
+			else {
+				return $errors;
 			}
 		}
 
@@ -238,6 +235,7 @@ class Mailgun_mailer {
 
 		// Initially set errors to false
 		$errors = false;
+		$errorMsgs = array();
 		$notAllowed = array();
 
 		// Check that all required fields are present
@@ -247,6 +245,7 @@ class Mailgun_mailer {
 
 				if (empty($thisContent)) {
 					$this->variables[0]['error:' . $required] = true;
+					$errorMsgs[] = 'Missing required input: ' . $required;
 					$errors = true;
 				}
 			}
@@ -268,6 +267,7 @@ class Mailgun_mailer {
 		if ($this->recaptcha) {
 			if (!isset($_POST['g-recaptcha-response']) || !$this->_checkCaptcha($_POST['g-recaptcha-response'])) {
 				$errors = true;
+				$errorMsgs[] = 'Form security validation error.';
 				$this->variables[0]['error:recaptcha'] = true;
 			}
 		}
@@ -276,6 +276,7 @@ class Mailgun_mailer {
 		if ($this->honeypot !== false) {
 			if (isset($_POST[$this->honeypot]) && !empty($_POST[$this->honeypot])) {
 				$errors = true;
+				$errorMsgs[] = 'Form security validation error.';
 				$this->variables[0]['error:honeypot'] = true;
 			}
 		}
@@ -283,7 +284,9 @@ class Mailgun_mailer {
 		// If there are errors, set the form and return
 		if ($errors) {
 			$this->variables[0]['error'] = true;
-			return ($this->jsonReturn) ? $this->variables[0] : $this->_setForm();
+			return ($this->jsonReturn) ? 
+				$this->variables[0] : 
+				'<div class="error">' . implode('<br>', $errorMsgs) . "</div>\n" . $this->_setForm();
 		}
 
 		// If there are no errors, just return

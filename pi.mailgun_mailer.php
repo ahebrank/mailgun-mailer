@@ -48,12 +48,16 @@ class Mailgun_mailer {
 	public function form() {
 		// Make sure allowed param is set
 		if (empty($this->allowed[0])) {
-			return;
+			return "Allowed parameter is required.";
 		}
 
 		// Detect whether this is a submission or not
 		if ($_POST) {
 			$returnData = $this->_postForm();
+			if ($returnData === FALSE) {
+				$returnData = '<div class="error">Error in form submission</div>' 
+					. $this->_setForm();
+			}
 		} else {
 			$returnData = $this->_setForm();
 		}
@@ -80,7 +84,7 @@ class Mailgun_mailer {
 
 				ee()->output->send_ajax_response($output);
 			} else {
-				return $errors;
+				return FALSE;
 			}
 		}
 

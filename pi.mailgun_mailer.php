@@ -19,6 +19,7 @@ class Mailgun_mailer {
 		$this->formClass = ee()->TMPL->fetch_param('class');
 		$this->formId = ee()->TMPL->fetch_param('id');
 		$this->return = ee()->TMPL->fetch_param('return');
+		$this->return_params = explode('|', ee()->TMPL->fetch_param('return_params'));
 		$jsonReturn = ee()->TMPL->fetch_param('json');
 		$this->jsonReturn = ($jsonReturn == 'yes');
 		$this->required = explode('|', ee()->TMPL->fetch_param('required'));
@@ -37,6 +38,7 @@ class Mailgun_mailer {
 		$recaptcha = ee()->TMPL->fetch_param('recaptcha', false);
 		$this->recaptcha = ($recaptcha == 'yes');
 		$this->honeypot = ee()->TMPL->fetch_param('honeypot', false);
+
 
 		// If there was an error posting, fill in the form values from the post
 		$this->variables = array();
@@ -185,10 +187,22 @@ class Mailgun_mailer {
 		$success = ($result->http_response_code == 200);
 
 		// Set up the appropriate return
-		if (! empty($this->return)) {
+		if (!empty($this->return)) {
 			// Redirect to the return paramter
 			if ($success) {
-				ee()->functions->redirect($this->return);
+				$return_url = $this->return;
+				if (!empty($this->return_params)) {
+					$q = array();
+					foreach ($this->return_params as $key) {
+						if (isset($this->post[$key])) {
+							$q[$key] = $this->post[$key];
+						}
+					}
+					if (!empty($q)) {
+						$return_url .= '?' . http_build_query($q);
+					}
+				}
+				ee()->functions->redirect($return_url);
 			} else {
 				// Set the form up
 				$form = $this->_setForm();

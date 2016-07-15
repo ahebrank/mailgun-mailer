@@ -30,13 +30,14 @@ Quick example (borrowed from [MandrillMailer](https://buzzingpixel.com/ee-add-on
   required="phone|message"
   message="phone|message"
   return="/my/uri"
+  return_params="phone|message"
   json="yes"
   class="my-class"
   id="my-id"}
 
   {!-- your form here--don't include the <form> tag, e.g.: --}
-    <input type="text" name="phone">
-    <input type="text" name="message">
+    <input type="text" name="phone" value="{phone}">
+    <input type="text" name="message" value="{message}">
 
 {/exp:mailgun_mailer}
 ```

@@ -38,6 +38,9 @@ class Mailgun_mailer {
 		$recaptcha = ee()->TMPL->fetch_param('recaptcha', false);
 		$this->recaptcha = ($recaptcha == 'yes');
 		$this->honeypot = ee()->TMPL->fetch_param('honeypot', false);
+		$this->post_to = ee()->TMPL->fetch_param('post_to', false);
+		$this->post_field_map = ee()->TMPL->fetch_param('post_field_map', false);
+		$this->post_extra = ee()->TMPL->fetch_param('post_extra', false);
 
 
 		// If there was an error posting, fill in the form values from the post
@@ -176,6 +179,36 @@ class Mailgun_mailer {
 					$textContent .= addslashes($value);
 				}
 			}
+		}
+
+		// optionally post the data to an external endpoint
+		if ($this->post_to !== FALSE) {
+			$post_to_data = $this->post;
+
+			// need to relabel fields?
+			if ($this->post_field_map !== FALSE) {
+				$map = explode('|', $this->post_field_map);
+				foreach ($map as $f) {
+					list($orig_field, $new_field) = explode(':', $f);
+					if (isset($post_to_data[$orig_field])) {
+						$post_to_data[$new_field] = $post_to_data[$orig_field];
+						unset($post_to_data[$orig_field]);
+					}
+				}
+			}
+
+			// extra stuff?
+			if ($this->post_extra !== FALSE) {
+				$fields = explode('|', $this->post_extra);
+				foreach ($fields as $f) {
+					list($key, $val) = explode(':', $f);
+					$post_to_data[$key] = $val;
+				}
+			}
+
+			//print_r($post_to_data); exit();
+			$post_to_success = $this->curlpost($this->post_to, $post_to_data);
+			print_r($post_to_success); exit();
 		}
 
 		// Set the content to the $message array
@@ -381,6 +414,10 @@ class Mailgun_mailer {
 			'secret' => ee()->config->item('mailgun_recaptcha_secret'),
 			'response' => $formval
 		);
+		return $this->curlpost($url, $data);
+	}
+
+	private function curlpost($url, $data) {
 		$ch = curl_init();
 		$opts = array(
 			CURLOPT_URL => $url,

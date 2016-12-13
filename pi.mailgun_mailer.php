@@ -81,7 +81,7 @@ class Mailgun_mailer {
 				}
 
 				ee()->output->send_ajax_response($output);
-			} 
+			}
 			else {
 				return $errors;
 			}
@@ -102,7 +102,7 @@ class Mailgun_mailer {
 		//   3. the webmaster_email config item
 		if (!empty($this->from)) {
 			$message['h:reply-to'] = $this->from;
-		} 
+		}
 		elseif (!empty($this->post['from-email'])) {
 			$message['h:reply-to'] = $this->post['from-email'];
 		}
@@ -298,8 +298,8 @@ class Mailgun_mailer {
 		// If there are errors, set the form and return
 		if ($errors) {
 			$this->variables[0]['error'] = true;
-			return ($this->jsonReturn) ? 
-				$this->variables[0] : 
+			return ($this->jsonReturn) ?
+				$this->variables[0] :
 				'<div class="error">' . implode('<br>', $errorMsgs) . "</div>\n" . $this->_setForm();
 		}
 
@@ -309,8 +309,10 @@ class Mailgun_mailer {
 
 	private function _setForm($parse = true) {
 
-		$protocol = (isset($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] == "on") ? "https://" : "http://";
-		$url = $protocol . $_SERVER['HTTP_HOST'] . '/' . ee()->uri->uri_string();
+		$base_url = ee()->config->item('base_url');
+		$base_url = (empty($base_url))? '/':$base_url;
+
+		$url = $base_url . ee()->uri->uri_string();
 		if ($this->anchor) {
 			$url .= '#' . $this->anchor;
 		}
@@ -336,7 +338,7 @@ class Mailgun_mailer {
 		// check for a recaptcha request
 		if (strpos($this->tagContents, '{recaptcha}') !== FALSE) {
 			if ($this->recaptcha) {
-				$this->variables[0]['recaptcha'] = '<div class="g-recaptcha" data-sitekey="' 
+				$this->variables[0]['recaptcha'] = '<div class="g-recaptcha" data-sitekey="'
 					. ee()->config->item('mailgun_recaptcha_site_key') . '"></div>';
 				$form .= '<script src="https://www.google.com/recaptcha/api.js" async defer></script>';
 			}
@@ -371,7 +373,7 @@ class Mailgun_mailer {
 	}
 
 	/**
-	 * check recaptcha 
+	 * check recaptcha
 	 */
 	private function _checkCaptcha($formval) {
 		$url = 'https://www.google.com/recaptcha/api/siteverify';
@@ -381,7 +383,7 @@ class Mailgun_mailer {
 		);
 		$ch = curl_init();
 		$opts = array(
-			CURLOPT_URL => $url, 
+			CURLOPT_URL => $url,
 			CURLOPT_POST => TRUE,
 			CURLOPT_POSTFIELDS => $data,
 			CURLOPT_RETURNTRANSFER => TRUE,
@@ -405,7 +407,7 @@ class Mailgun_mailer {
 		return strip_tags(str_replace($nl_tags, "\n", $html));
 	}
 
-	function usage() {
+	static function usage() {
 		ob_start();
 ?>
 

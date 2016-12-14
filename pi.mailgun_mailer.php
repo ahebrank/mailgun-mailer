@@ -42,6 +42,8 @@ class Mailgun_mailer {
 		$this->post_field_map = ee()->TMPL->fetch_param('post_field_map', false);
 		$this->post_extra = ee()->TMPL->fetch_param('post_extra', false);
 
+		$this->captcha_error = ee()->TMPL->fetch_param('captcha_error_message', 'Please check the I Am Not A Robot box and resubmit.');
+		$this->honeypot_error = ee()->TMPL->fetch_param('honeypot_error_message', 'Form security validation error');
 
 		// If there was an error posting, fill in the form values from the post
 		$this->variables = array();
@@ -314,7 +316,7 @@ class Mailgun_mailer {
 		if ($this->recaptcha) {
 			if (!isset($_POST['g-recaptcha-response']) || !$this->_checkCaptcha($_POST['g-recaptcha-response'])) {
 				$errors = true;
-				$errorMsgs[] = 'Form security validation error.';
+				$errorMsgs[] = $this->captcha_error;
 				$this->variables[0]['error:recaptcha'] = true;
 			}
 		}
@@ -323,7 +325,7 @@ class Mailgun_mailer {
 		if ($this->honeypot !== false) {
 			if (isset($_POST[$this->honeypot]) && !empty($_POST[$this->honeypot])) {
 				$errors = true;
-				$errorMsgs[] = 'Form security validation error.';
+				$errorMsgs[] = $this->honeypot_error;
 				$this->variables[0]['error:honeypot'] = true;
 			}
 		}

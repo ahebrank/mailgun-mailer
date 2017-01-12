@@ -1,5 +1,6 @@
 <?php if (! defined('BASEPATH')) exit('No direct script access allowed');
 require 'lib/mailgun-php/vendor/autoload.php';
+require_once('MailgunMailerLogger.php');
 use Mailgun\Mailgun;
 
 $plugin_info = array (
@@ -12,6 +13,8 @@ $plugin_info = array (
 );
 
 class Mailgun_mailer {
+	
+	var $log;
 
 	public function __construct() {
 		// Fetch Parameters
@@ -50,8 +53,14 @@ class Mailgun_mailer {
 		foreach ($this->allowed as $allowed) {
 			$this->variables[0][$allowed] = ee()->input->post($allowed);
 		}
+		
+		// logging table
+		$this->log = new MailgunMailerLogger();
+		if (ee()->TMPL->fetch_param('disable_log', false)) {
+			$this->log->disable();
+		}
 	}
-
+	
 	public function form() {
 		// Make sure allowed param is set
 		if (empty($this->allowed[0])) {
@@ -210,7 +219,7 @@ class Mailgun_mailer {
 
 			//print_r($post_to_data); exit();
 			$post_to_success = $this->curlpost($this->post_to, $post_to_data);
-			print_r($post_to_success); exit();
+			//print_r($post_to_success); exit();
 		}
 
 		// Set the content to the $message array
@@ -220,6 +229,9 @@ class Mailgun_mailer {
 		// Send the message
 		$result = $mailer->sendMessage($domain, $message);
 		$success = ($result->http_response_code == 200);
+		
+		// log the submission
+		$this->log->log($this->post, null, $success);
 
 		// Set up the appropriate return
 		if (!empty($this->return)) {

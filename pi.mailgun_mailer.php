@@ -44,6 +44,8 @@ class Mailgun_mailer {
 		$this->post_to = ee()->TMPL->fetch_param('post_to', false);
 		$this->post_field_map = ee()->TMPL->fetch_param('post_field_map', false);
 		$this->post_extra = ee()->TMPL->fetch_param('post_extra', false);
+		$this->cookies = ee()->TMPL->fetch_param('cookies', false);
+		$this->remap = ee()->TMPL->fetch_param('remap', false);
 
 		$this->captcha_error = ee()->TMPL->fetch_param('captcha_error_message', 'Please check the I Am Not A Robot box and resubmit.');
 		$this->honeypot_error = ee()->TMPL->fetch_param('honeypot_error_message', 'Form security validation error');
@@ -163,6 +165,35 @@ class Mailgun_mailer {
 				$this->message[] = $key;
 			}
 		}
+		
+		// pass cookies?
+		if ($this->cookies !== FALSE) {
+			$cookies = explode('|', trim($this->cookies, '|'));
+			foreach ($cookies as $cookie) {
+				if (isset($_COOKIE[$cookie])) {
+					// set the value
+					$this->post[$cookie] = $_COOKIE[$cookie];
+					// add the key to the message
+					$this->message[] = $cookie;
+				}
+			}
+		}
+		
+		// remap output values
+		if ($this->remap !== FALSE) {
+			$remap = explode('|', trim($this->remap, '|'));
+			foreach ($remap as $mapping) {
+				list($orig, $new) = explode(':', trim($mapping, ':'));
+				if (isset($this->post[$orig])) {
+					$this->post[$new] = $this->post[$orig];
+					unset($this->post[$orig]);
+					if ($i = array_search($orig, $this->message)) {
+						unset($this->message[$i]);
+						$this->message[] = $new;
+					}
+				}
+			}
+		}
 
 		$htmlContent = '';
 		$textContent = '';
@@ -177,6 +208,7 @@ class Mailgun_mailer {
 			foreach ($this->post as $key => $value) {
 				if (in_array($key, $this->message)) {
 					$key = str_replace('-', ' ', $key);
+					$key = str_replace('_', ' ', $key);
 					$key = ucwords($key);
 
 					$value = $value . '
@@ -210,7 +242,7 @@ class Mailgun_mailer {
 
 			// extra stuff?
 			if ($this->post_extra !== FALSE) {
-				$fields = explode('|', $this->post_extra);
+				$fields = explode('|', trim($this->post_extra, '|'));
 				foreach ($fields as $f) {
 					list($key, $val) = explode(':', $f);
 					$post_to_data[$key] = $val;

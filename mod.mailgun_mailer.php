@@ -37,6 +37,8 @@ class Mailgun_mailer {
 		$this->post_field_map = ee()->TMPL->fetch_param('post_field_map', false);
 		$this->post_extra = ee()->TMPL->fetch_param('post_extra', false);
 		$this->remap = ee()->TMPL->fetch_param('remap', false);
+		$uploads = ee()->TMPL->fetch_param('uploads', 'no');
+		$this->uploads = ($uploads == 'yes');
 
 		$this->captcha_error = ee()->TMPL->fetch_param('captcha_error_message', 'Please check the I Am Not A Robot box and resubmit.');
 		$this->honeypot_error = ee()->TMPL->fetch_param('honeypot_error_message', 'Form security validation error');
@@ -96,7 +98,7 @@ class Mailgun_mailer {
 		}
 
 		$domain = ee()->config->item('mailgun_domain');
-		$mailer = new Mailgun(ee()->config->item('mailgun_key', null));
+		$mailer = Mailgun::create(ee()->config->item('mailgun_key', null));
 
 		// Set up message and set the reply to as the sender
 		$message = array(
@@ -179,6 +181,25 @@ class Mailgun_mailer {
 			}
 		}
 
+		// handle file uploads
+		$attachments = array();
+		if ($this->uploads) {
+			foreach ($_FILES as $k => $filedata) {
+				if (in_array($k, $this->allowed)) {
+					if ($filedata['name'] && !$filedata['error']) {
+						$attachments[] = array(
+							'filePath' => $filedata['tmp_name'],
+							'filename' => $filedata['name'],
+						);
+					}
+				}
+			}
+
+			if (!empty($attachments)) {
+				$message['attachment'] = $attachments;
+			}
+		}
+
 		$htmlContent = '';
 		$textContent = '';
 
@@ -243,8 +264,8 @@ class Mailgun_mailer {
 		$message['text'] = $textContent;
 
 		// Send the message
-		$result = $mailer->sendMessage($domain, $message);
-		$success = ($result->http_response_code == 200);
+		$result = $mailer->messages()->send($domain, $message);
+		$success = (strpos($result->getMessage(), 'Queued') !== FALSE);
 		
 		// log the submission
 		$this->log->log($this->post, null, $success);
@@ -381,10 +402,14 @@ class Mailgun_mailer {
 		}
 
 		$form_opts = array(
-				'action'          => $url,
+			'action'          => $url,
 		    'name'            => 'mailgun_mailer',
 		    'secure'          => TRUE
 		);
+
+		if ($this->uploads) {
+			$form_opts['enctype'] = 'multipart/form-data';
+		}
 
 		if ($this->formClass) {
 			$form_opts['class'] = $this->formClass;

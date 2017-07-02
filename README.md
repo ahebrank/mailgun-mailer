@@ -11,10 +11,9 @@ Add the following to `system/expressionengine/config/config.php`:
 ```
 $config['mailgun_key'] = 'key-XXXXXXXXXXXXXXXXX';
 $config['mailgun_domain'] = 'sandboxXXXXXXXXXX.mailgun.org';
-$config['mailgun_sender'] = 'postmaster@example.com'
 ```
 
-These parameters are available on the [domain configuration page](https://mailgun.com/app/domains). To send from a real domain, you'll need to verify ownership in Mailgun. The `mailgun_sender` config parameter is optional but lets you match the `From` MIME header to the envelope sender (listed as the "Default SMTP Login" on the Mailgun domain information page). This helps deliverability with strict endpoints.
+These parameters are available on the [domain configuration page](https://mailgun.com/app/domains). To send from a real domain, you'll need to verify ownership in Mailgun.
 
 ## Tag parameters
 
@@ -30,14 +29,13 @@ Quick example (borrowed from [MandrillMailer](https://buzzingpixel.com/ee-add-on
   required="phone|message"
   message="phone|message"
   return="/my/uri"
-  return_params="phone|message"
   json="yes"
   class="my-class"
   id="my-id"}
 
   {!-- your form here--don't include the <form> tag, e.g.: --}
-    <input type="text" name="phone" value="{phone}">
-    <input type="text" name="message" value="{message}">
+    <input type="text" name="phone">
+    <input type="text" name="message">
 
 {/exp:mailgun_mailer}
 ```
@@ -56,19 +54,11 @@ By default, the mailer will produce a simple list of fields listed by form name.
 
 where `first_name`, `last_name`, and `mi` are input `name` attributes in the submitted form.
 
-### Captcha: `recaptcha`
+### Recaptcha
 
-[Google's reCAPTCHA service](https://www.google.com/recaptcha/intro/index.html) is supported.  You will need to [register your mailer](https://www.google.com/recaptcha/admin) and add your Secret Key and Site Key to to `config.php`:
+[Google's reCAPTCHA service](https://www.google.com/recaptcha/intro/index.html) is supported.  Set parameter `recaptcha="yes"` to enable the submission check and drop tag `{recaptcha}` somewhere inside your form to enable the widget.
 
-```php
-$config['mailgun_recaptcha_secret'] = 'xxxxxxxxxxxxxxxxxxxxxxxxxxx';
-$config['mailgun_recaptcha_site_key'] = 'xxxxxxxxxxxxxxxxxxxxxxxxxxx';
-```
-
-Then set parameter `recaptcha="yes"` on the `{exp:mailgun_mailer:form}` tag to enable the submission check and drop tag `{recaptcha}` somewhere inside your form to enable the widget.
-
-
-### Honeypot field: `honeypot`
+### Honeypot field
 
 An alterate or complementary spam detection technique is to provide a fake "honeypot" field that to human users should be hidden and left blank.  Bots may be detected because they may fill this field with arbitrary text.  Using `honeypot="test_email"` and then adding field `<input id="test_email" name="test_email">` within your form will check to make sure this input submission remains blank.  To make sure normal users don't fill in this field, make sure to hide it with styling:
 

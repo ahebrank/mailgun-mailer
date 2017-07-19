@@ -1,6 +1,7 @@
 <?php if (! defined('BASEPATH')) exit('No direct script access allowed');
-require 'lib/mailgun-php/vendor/autoload.php';
-require_once('MailgunMailerLogger.php');
+require 'vendor/autoload.php';
+require_once 'MailgunMailerLogger.php';
+require_once 'BriteverifyEmailVerifier.php';
 use Mailgun\Mailgun;
 
 class Mailgun_mailer {
@@ -37,11 +38,12 @@ class Mailgun_mailer {
 		$this->post_field_map = ee()->TMPL->fetch_param('post_field_map', false);
 		$this->post_extra = ee()->TMPL->fetch_param('post_extra', false);
 		$this->remap = ee()->TMPL->fetch_param('remap', false);
-		$uploads = ee()->TMPL->fetch_param('uploads', 'no');
-		$this->uploads = ($uploads == 'yes');
+		$this->verify_email = ee()->TMPL->fetch_param('verify_email', false);
 
 		$this->captcha_error = ee()->TMPL->fetch_param('captcha_error_message', 'Please check the I Am Not A Robot box and resubmit.');
 		$this->honeypot_error = ee()->TMPL->fetch_param('honeypot_error_message', 'Form security validation error');
+		$this->verify_email_error = ee()->TMPL->fetch_param('verify_email_error_message', 'Invalid or unrecognized email address. Please use a verifiable email address.');
+		
 
 		// If there was an error posting, fill in the form values from the post
 		$this->variables = array();
@@ -98,7 +100,7 @@ class Mailgun_mailer {
 		}
 
 		$domain = ee()->config->item('mailgun_domain');
-		$mailer = Mailgun::create(ee()->config->item('mailgun_key', null));
+		$mailer = new Mailgun(ee()->config->item('mailgun_key', null));
 
 		// Set up message and set the reply to as the sender
 		$message = array(
@@ -181,25 +183,6 @@ class Mailgun_mailer {
 			}
 		}
 
-		// handle file uploads
-		$attachments = array();
-		if ($this->uploads) {
-			foreach ($_FILES as $k => $filedata) {
-				if (in_array($k, $this->allowed)) {
-					if ($filedata['name'] && !$filedata['error']) {
-						$attachments[] = array(
-							'filePath' => $filedata['tmp_name'],
-							'filename' => $filedata['name'],
-						);
-					}
-				}
-			}
-
-			if (!empty($attachments)) {
-				$message['attachment'] = $attachments;
-			}
-		}
-
 		$htmlContent = '';
 		$textContent = '';
 
@@ -264,8 +247,8 @@ class Mailgun_mailer {
 		$message['text'] = $textContent;
 
 		// Send the message
-		$result = $mailer->messages()->send($domain, $message);
-		$success = (strpos($result->getMessage(), 'Queued') !== FALSE);
+		$result = $mailer->sendMessage($domain, $message);
+		$success = ($result->http_response_code == 200);
 		
 		// log the submission
 		$this->log->log($this->post, null, $success);
@@ -379,6 +362,33 @@ class Mailgun_mailer {
 			}
 		}
 
+		// verify email?
+		if ($this->verify_email !== false) {
+			if (isset($_POST[$this->verify_email]) && !empty($_POST[$this->verify_email])) {
+				$email_api_key = ee()->config->item('mailgun_email_verify_api_key');
+				if (empty($email_api_key)) {
+					$errors = true;
+					$errorMsgs[] = 'Missing or invalid email verification API key';
+				}
+				else {
+					$ve = new BriteverifyEmailVerifier($email_api_key);
+					
+					$verification_status = $ve->verify($_POST[$this->verify_email]);
+					if ($verification_status == $ve::EMAIL_VERIFY_PROBLEM) {
+						$errors = true;
+						$errorMsgs[] = 'Problem verifying email address. Please notify the site administrator.';
+					}
+					elseif ($verification_status == $ve::EMAIL_VERIFY_NO) {
+						$errors = true;
+						$errorMsgs[] = $this->verify_email_error;
+					}
+					elseif ($verification_status == $ve::EMAIL_VERIFY_FLAG) {
+						$this->post['email_verification'] = 'flagged';
+					}
+				}
+			}
+		}
+
 		// If there are errors, set the form and return
 		if ($errors) {
 			$this->variables[0]['error'] = true;
@@ -402,14 +412,10 @@ class Mailgun_mailer {
 		}
 
 		$form_opts = array(
-			'action'          => $url,
+				'action'          => $url,
 		    'name'            => 'mailgun_mailer',
 		    'secure'          => TRUE
 		);
-
-		if ($this->uploads) {
-			$form_opts['enctype'] = 'multipart/form-data';
-		}
 
 		if ($this->formClass) {
 			$form_opts['class'] = $this->formClass;

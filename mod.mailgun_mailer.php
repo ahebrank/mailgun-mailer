@@ -220,11 +220,17 @@ class Mailgun_mailer {
 			if ($this->post_field_map !== FALSE) {
 				$map = explode('|', $this->post_field_map);
 				foreach ($map as $f) {
-					list($orig_field, $new_field) = explode(':', $f);
-					if (isset($post_to_data[$orig_field])) {
-						$post_to_data[$new_field] = $post_to_data[$orig_field];
-						unset($post_to_data[$orig_field]);
+					list($orig_field_key, $new_field) = explode(':', $f);
+					// handle concatenation
+					$orig_fields = explode(',', $orig_field_key);
+					$val = array();
+					foreach ($orig_fields as $orig_field) {
+						if (isset($post_to_data[$orig_field])) {
+							$val[] = $post_to_data[$orig_field];
+							unset($post_to_data[$orig_field]);
+						}
 					}
+					$post_to_data[$new_field] = implode(' ', $val);
 				}
 			}
 

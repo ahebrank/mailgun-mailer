@@ -35,6 +35,7 @@ class Mailgun_mailer {
 		$this->recaptcha = ($recaptcha == 'yes');
 		$this->honeypot = ee()->TMPL->fetch_param('honeypot', false);
 		$this->post_to = ee()->TMPL->fetch_param('post_to', false);
+		$this->post_to_if = ee()->TMPL->fetch_param('post_to_if', false);
 		$this->post_field_map = ee()->TMPL->fetch_param('post_field_map', false);
 		$this->post_extra = ee()->TMPL->fetch_param('post_extra', false);
 		$this->remap = ee()->TMPL->fetch_param('remap', false);
@@ -216,6 +217,25 @@ class Mailgun_mailer {
 		if ($this->post_to !== FALSE) {
 			$post_to_data = $this->post;
 
+			// use a field value as a conditional check for posting
+			$ok_to_post = TRUE;
+			if ($this->post_to_if !== FALSE) {
+				$conditionals = explode('|', $this->post_to_if);
+				foreach ($conditionals as $conditional) {
+					list($field, $test) = explode(':', $conditional);
+					if (isset($post_to_data[$field])) {
+						if ($post_to_data[$field] != $test) {
+							$ok_to_post = FALSE;
+							break;
+						}
+					}
+					else {
+						$ok_to_post = FALSE;
+						break;
+					}
+				}
+			}
+
 			// need to relabel fields?
 			if ($this->post_field_map !== FALSE) {
 				$map = explode('|', $this->post_field_map);
@@ -243,9 +263,11 @@ class Mailgun_mailer {
 				}
 			}
 
-			//print_r($post_to_data); exit();
-			$post_to_success = $this->curlpost($this->post_to, $post_to_data);
-			//print_r($post_to_success); exit();
+			if ($ok_to_post) {
+				//print_r($post_to_data); exit();
+				$post_to_success = $this->curlpost($this->post_to, $post_to_data);
+				//print_r($post_to_success); exit();
+			}
 		}
 
 		// Set the content to the $message array

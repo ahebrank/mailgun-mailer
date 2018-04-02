@@ -395,16 +395,14 @@ class Mailgun_mailer {
 			if (isset($_POST[$this->verify_email]) && !empty($_POST[$this->verify_email])) {
 				$email_api_key = ee()->config->item('mailgun_email_verify_api_key');
 				if (empty($email_api_key)) {
-					$errors = true;
-					$errorMsgs[] = 'Missing or invalid email verification API key';
+					$this->post['email_verification'] = 'no API key';
 				}
 				else {
 					$ve = new BriteverifyEmailVerifier($email_api_key);
 					
 					$verification_status = $ve->verify($_POST[$this->verify_email]);
 					if ($verification_status == $ve::EMAIL_VERIFY_PROBLEM) {
-						$errors = true;
-						$errorMsgs[] = 'Problem verifying email address. Please notify the site administrator.';
+						$this->post['email_verification'] = 'unable to verify';
 					}
 					elseif ($verification_status == $ve::EMAIL_VERIFY_NO) {
 						$errors = true;
